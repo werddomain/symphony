@@ -179,15 +179,21 @@ public class AppServerClient : IDisposable
                 }
 
                 // Hard failure on user-input-required (SPEC 10.5)
-                if (methodStr is "item/tool/requestUserInput"
-                    || (methodStr is "turn/inputRequired" or "turn/input_required"))
+                if (methodStr is "item/tool/requestUserInput" or "turn/inputRequired" or "turn/input_required")
                 {
                     _logger.LogWarning("User input requested, failing run");
                     return "turn_input_required";
                 }
+
+                // Handle unsupported dynamic tool calls (SPEC 10.5)
+                if (methodStr is "item/tool/call" && message.TryGetProperty("id", out var toolCallId))
+                {
+                    await HandleUnsupportedToolCallAsync(toolCallId);
+                    continue;
+                }
             }
 
-            // Handle approval requests that come as responses with approval_request field
+            // Handle user-input-required signaled via params (compatible payload variant)
             if (message.TryGetProperty("params", out var msgParams))
             {
                 if (msgParams.TryGetProperty("inputRequired", out var inputReq)
@@ -196,15 +202,6 @@ public class AppServerClient : IDisposable
                     _logger.LogWarning("User input requested via params, failing run");
                     return "turn_input_required";
                 }
-            }
-
-            // Handle unsupported dynamic tool calls (SPEC 10.5)
-            if (message.TryGetProperty("method", out var toolMethod)
-                && toolMethod.GetString() is "item/tool/call"
-                && message.TryGetProperty("id", out var toolCallId))
-            {
-                await HandleUnsupportedToolCallAsync(toolCallId);
-                continue;
             }
         }
 
@@ -218,8 +215,11 @@ public class AppServerClient : IDisposable
     {
         if (message.TryGetProperty("id", out var approvalId))
         {
-            _logger.LogDebug("Auto-approving request {Id}", approvalId);
-            await SendAsync(new { id = approvalId.GetRawText().Trim('"'), result = new { approved = true } });
+            var idValue = approvalId.ValueKind == JsonValueKind.String
+                ? (object)approvalId.GetString()!
+                : approvalId.GetInt32();
+            _logger.LogDebug("Auto-approving request {Id}", idValue);
+            await SendAsync(new { id = idValue, result = new { approved = true } });
         }
     }
 
@@ -228,10 +228,13 @@ public class AppServerClient : IDisposable
     /// </summary>
     private async Task HandleUnsupportedToolCallAsync(JsonElement toolCallId)
     {
-        _logger.LogDebug("Rejecting unsupported tool call {Id}", toolCallId);
+        var idValue = toolCallId.ValueKind == JsonValueKind.String
+            ? (object)toolCallId.GetString()!
+            : toolCallId.GetInt32();
+        _logger.LogDebug("Rejecting unsupported tool call {Id}", idValue);
         await SendAsync(new
         {
-            id = toolCallId.GetRawText().Trim('"'),
+            id = idValue,
             result = new { success = false, error = "unsupported_tool_call" }
         });
     }
