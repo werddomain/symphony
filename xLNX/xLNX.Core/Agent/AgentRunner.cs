@@ -18,19 +18,22 @@ public class AgentRunner
     private readonly WorkspaceManager _workspaceManager;
     private readonly IIssueTrackerClient _tracker;
     private readonly ILogger<AgentRunner> _logger;
+    private readonly ILoggerFactory _loggerFactory;
 
     public AgentRunner(
         Func<ServiceConfig> configProvider,
         Func<WorkflowDefinition> workflowProvider,
         WorkspaceManager workspaceManager,
         IIssueTrackerClient tracker,
-        ILogger<AgentRunner> logger)
+        ILogger<AgentRunner> logger,
+        ILoggerFactory loggerFactory)
     {
         _configProvider = configProvider;
         _workflowProvider = workflowProvider;
         _workspaceManager = workspaceManager;
         _tracker = tracker;
         _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -80,7 +83,7 @@ public class AgentRunner
 
         runAttempt.Status = RunAttemptStatus.LaunchingAgentProcess;
 
-        using var appServer = new AppServerClient(_logger.CreateLogger<AppServerClient>());
+        using var appServer = new AppServerClient(_loggerFactory.CreateLogger<AppServerClient>());
         try
         {
             appServer.Launch(config.CodexCommand, workspace.Path);
@@ -183,17 +186,5 @@ public class AgentRunner
                 _logger.LogWarning(ex, "after_run hook failed, ignoring");
             }
         }
-    }
-}
-
-internal static class LoggerExtensions
-{
-    public static ILogger<T> CreateLogger<T>(this ILogger logger)
-    {
-        if (logger is ILoggerFactory factory)
-            return factory.CreateLogger<T>();
-
-        // Fallback: use a NullLoggerFactory
-        return Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<T>();
     }
 }
