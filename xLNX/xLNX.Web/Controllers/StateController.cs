@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using xLNX.Core.Models;
+using xLNX.Core.Orchestration;
 
 namespace xLNX.Web.Controllers;
 
@@ -12,10 +13,12 @@ namespace xLNX.Web.Controllers;
 public class StateController : ControllerBase
 {
     private readonly Func<OrchestratorState> _stateProvider;
+    private readonly Orchestrator? _orchestrator;
 
-    public StateController(Func<OrchestratorState> stateProvider)
+    public StateController(Func<OrchestratorState> stateProvider, Orchestrator? orchestrator = null)
     {
         _stateProvider = stateProvider;
+        _orchestrator = orchestrator;
     }
 
     /// <summary>
@@ -134,6 +137,7 @@ public class StateController : ControllerBase
     [HttpPost("refresh")]
     public IActionResult Refresh()
     {
+        _orchestrator?.TriggerPoll();
         return Accepted(new
         {
             queued = true,

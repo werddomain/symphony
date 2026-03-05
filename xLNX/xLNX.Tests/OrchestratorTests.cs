@@ -146,6 +146,149 @@ public class OrchestratorTests
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<Orchestrator>()
         );
     }
+
+    [TestMethod]
+    public void OnWorkerExit_Normal_SchedulesContinuationRetry()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+        var issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "Todo" };
+
+        // Simulate a running entry
+        state.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = issue,
+            StartedAt = DateTime.UtcNow.AddSeconds(-10)
+        };
+        state.Claimed.Add("1");
+
+        orchestrator.OnWorkerExit("1", isNormal: true);
+
+        // Running entry should be removed
+        Assert.IsFalse(state.Running.ContainsKey("1"));
+        // Should be in completed
+        Assert.IsTrue(state.Completed.Contains("1"));
+        // Should have retry entry with attempt 1 (continuation)
+        Assert.IsTrue(state.RetryAttempts.ContainsKey("1"));
+        Assert.AreEqual(1, state.RetryAttempts["1"].Attempt);
+        // Runtime totals should be updated
+        Assert.IsTrue(state.CodexTotals.SecondsRunning >= 9);
+    }
+
+    [TestMethod]
+    public void OnWorkerExit_Abnormal_SchedulesRetryWithError()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+        var issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "Todo" };
+
+        state.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = issue,
+            RetryAttempt = null,
+            StartedAt = DateTime.UtcNow
+        };
+        state.Claimed.Add("1");
+
+        orchestrator.OnWorkerExit("1", isNormal: false, error: "turn_failed");
+
+        Assert.IsFalse(state.Running.ContainsKey("1"));
+        Assert.IsTrue(state.RetryAttempts.ContainsKey("1"));
+        Assert.AreEqual(1, state.RetryAttempts["1"].Attempt);
+        Assert.AreEqual("turn_failed", state.RetryAttempts["1"].Error);
+    }
+
+    [TestMethod]
+    public void OnWorkerExit_Abnormal_IncrementsRetryAttempt()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+
+        state.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "Todo" },
+            RetryAttempt = 2,
+            StartedAt = DateTime.UtcNow
+        };
+        state.Claimed.Add("1");
+
+        orchestrator.OnWorkerExit("1", isNormal: false, error: "timeout");
+
+        Assert.AreEqual(3, state.RetryAttempts["1"].Attempt);
+    }
+
+    [TestMethod]
+    public void HandleCodexUpdate_UpdatesSessionMetadata()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+
+        state.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "In Progress" },
+            StartedAt = DateTime.UtcNow
+        };
+
+        orchestrator.HandleCodexUpdate("1", "notification", null);
+
+        Assert.AreEqual("notification", state.Running["1"].Session.LastCodexEvent);
+        Assert.IsNotNull(state.Running["1"].Session.LastCodexTimestamp);
+    }
+
+    [TestMethod]
+    public void HandleCodexUpdate_UnknownIssue_NoOp()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        // Should not throw
+        orchestrator.HandleCodexUpdate("nonexistent", "turn_completed", null);
+    }
+
+    [TestMethod]
+    public void ScheduleRetry_CancelsExistingTimer()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+
+        orchestrator.ScheduleRetry("1", 1, "TEST-1", isContinuation: true, error: null);
+        var firstCts = state.RetryAttempts["1"].TimerHandle;
+
+        orchestrator.ScheduleRetry("1", 2, "TEST-1", isContinuation: false, error: "retry");
+        Assert.IsTrue(firstCts!.IsCancellationRequested);
+        Assert.AreEqual(2, state.RetryAttempts["1"].Attempt);
+        Assert.AreEqual("retry", state.RetryAttempts["1"].Error);
+    }
+
+    [TestMethod]
+    public void OnWorkerExit_AggregatesTokenTotals()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var state = orchestrator.State;
+
+        var session = new LiveSession
+        {
+            CodexInputTokens = 100,
+            CodexOutputTokens = 50,
+            CodexTotalTokens = 150
+        };
+        state.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "Todo" },
+            Session = session,
+            StartedAt = DateTime.UtcNow
+        };
+        state.Claimed.Add("1");
+
+        orchestrator.OnWorkerExit("1", isNormal: true);
+
+        Assert.AreEqual(100, state.CodexTotals.InputTokens);
+        Assert.AreEqual(50, state.CodexTotals.OutputTokens);
+        Assert.AreEqual(150, state.CodexTotals.TotalTokens);
+    }
 }
 
 /// <summary>
