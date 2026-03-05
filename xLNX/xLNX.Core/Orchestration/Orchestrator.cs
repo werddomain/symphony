@@ -296,6 +296,13 @@ public class Orchestrator
                 entry.Session.SessionId = sid.GetString() ?? string.Empty;
             }
 
+            // Track turn count from session_started events (SPEC 4.1.6)
+            if (eventType == "session_started" && json.TryGetProperty("turnCount", out var tc)
+                && tc.ValueKind == JsonValueKind.Number)
+            {
+                entry.Session.TurnCount = tc.GetInt32();
+            }
+
             // Extract PID if available
             if (json.TryGetProperty("codex_app_server_pid", out var pidProp))
             {
@@ -522,8 +529,23 @@ public class Orchestrator
 
             foreach (var issueId in stalled)
             {
-                _logger.LogWarning("Stalled session detected for issue {IssueId}", issueId);
-                TerminateRunningIssue(issueId, cleanupWorkspace: false);
+                _logger.LogWarning("Stalled session detected for issue {IssueId}, scheduling retry", issueId);
+                if (_state.Running.TryGetValue(issueId, out var stalledEntry))
+                {
+                    var nextAttempt = (stalledEntry.RetryAttempt ?? 0) + 1;
+                    var identifier = stalledEntry.Identifier;
+
+                    // Remove from running + update totals
+                    _state.Running.Remove(issueId);
+                    var elapsed = (DateTime.UtcNow - stalledEntry.StartedAt).TotalSeconds;
+                    _state.CodexTotals.SecondsRunning += elapsed;
+                    _state.CodexTotals.InputTokens += stalledEntry.Session.CodexInputTokens;
+                    _state.CodexTotals.OutputTokens += stalledEntry.Session.CodexOutputTokens;
+                    _state.CodexTotals.TotalTokens += stalledEntry.Session.CodexTotalTokens;
+
+                    // Schedule retry (SPEC 7.3, 8.5)
+                    ScheduleRetry(issueId, nextAttempt, identifier, isContinuation: false, error: "stall_timeout");
+                }
             }
         }
 

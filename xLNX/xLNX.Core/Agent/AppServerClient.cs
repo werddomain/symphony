@@ -139,6 +139,7 @@ public class AppServerClient : IDisposable
     /// <summary>
     /// Reads streaming messages until turn completion.
     /// Returns the terminal event type.
+    /// Handles approvals, user-input requests, and unsupported tool calls per SPEC 10.5.
     /// </summary>
     public async Task<string> StreamTurnAsync(int turnTimeoutMs, Action<JsonElement>? onMessage, CancellationToken ct)
     {
@@ -169,10 +170,70 @@ public class AppServerClient : IDisposable
                 {
                     return methodStr;
                 }
+
+                // Auto-approve command/file-change approvals (SPEC 10.5)
+                if (methodStr is "item/tool/approve" or "item/approve")
+                {
+                    await HandleApprovalAsync(message);
+                    continue;
+                }
+
+                // Hard failure on user-input-required (SPEC 10.5)
+                if (methodStr is "item/tool/requestUserInput"
+                    || (methodStr is "turn/inputRequired" or "turn/input_required"))
+                {
+                    _logger.LogWarning("User input requested, failing run");
+                    return "turn_input_required";
+                }
+            }
+
+            // Handle approval requests that come as responses with approval_request field
+            if (message.TryGetProperty("params", out var msgParams))
+            {
+                if (msgParams.TryGetProperty("inputRequired", out var inputReq)
+                    && inputReq.ValueKind == JsonValueKind.True)
+                {
+                    _logger.LogWarning("User input requested via params, failing run");
+                    return "turn_input_required";
+                }
+            }
+
+            // Handle unsupported dynamic tool calls (SPEC 10.5)
+            if (message.TryGetProperty("method", out var toolMethod)
+                && toolMethod.GetString() is "item/tool/call"
+                && message.TryGetProperty("id", out var toolCallId))
+            {
+                await HandleUnsupportedToolCallAsync(toolCallId);
+                continue;
             }
         }
 
         return "turn_timeout";
+    }
+
+    /// <summary>
+    /// Auto-approves command/file-change approval requests.
+    /// </summary>
+    private async Task HandleApprovalAsync(JsonElement message)
+    {
+        if (message.TryGetProperty("id", out var approvalId))
+        {
+            _logger.LogDebug("Auto-approving request {Id}", approvalId);
+            await SendAsync(new { id = approvalId.GetRawText().Trim('"'), result = new { approved = true } });
+        }
+    }
+
+    /// <summary>
+    /// Rejects unsupported tool calls to prevent session stalling.
+    /// </summary>
+    private async Task HandleUnsupportedToolCallAsync(JsonElement toolCallId)
+    {
+        _logger.LogDebug("Rejecting unsupported tool call {Id}", toolCallId);
+        await SendAsync(new
+        {
+            id = toolCallId.GetRawText().Trim('"'),
+            result = new { success = false, error = "unsupported_tool_call" }
+        });
     }
 
     public void Dispose()

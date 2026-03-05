@@ -289,6 +289,166 @@ public class OrchestratorTests
         Assert.AreEqual(50, state.CodexTotals.OutputTokens);
         Assert.AreEqual(150, state.CodexTotals.TotalTokens);
     }
+
+    [TestMethod]
+    public async Task Reconcile_NoRunningIssues_IsNoOp()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        // Should complete without errors
+        await orchestrator.OnTickAsync(CancellationToken.None);
+    }
+
+    [TestMethod]
+    public void ShouldDispatch_AlreadyRunning_ReturnsFalse()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var config = new ServiceConfig
+        {
+            ActiveStates = ["Todo"],
+            TerminalStates = ["Done"],
+            MaxConcurrentAgents = 10
+        };
+
+        var issue = new Issue
+        {
+            Id = "1",
+            Identifier = "TEST-1",
+            Title = "Test",
+            State = "Todo"
+        };
+
+        // Mark as running
+        orchestrator.State.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = issue,
+            StartedAt = DateTime.UtcNow
+        };
+
+        Assert.IsFalse(orchestrator.ShouldDispatch(issue, config));
+    }
+
+    [TestMethod]
+    public void ShouldDispatch_AlreadyClaimed_ReturnsFalse()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var config = new ServiceConfig
+        {
+            ActiveStates = ["Todo"],
+            TerminalStates = ["Done"],
+            MaxConcurrentAgents = 10
+        };
+
+        var issue = new Issue
+        {
+            Id = "1",
+            Identifier = "TEST-1",
+            Title = "Test",
+            State = "Todo"
+        };
+
+        orchestrator.State.Claimed.Add("1");
+        Assert.IsFalse(orchestrator.ShouldDispatch(issue, config));
+    }
+
+    [TestMethod]
+    public void ShouldDispatch_NonActiveState_ReturnsFalse()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var config = new ServiceConfig
+        {
+            ActiveStates = ["Todo", "In Progress"],
+            TerminalStates = ["Done"],
+            MaxConcurrentAgents = 10
+        };
+
+        var issue = new Issue
+        {
+            Id = "1",
+            Identifier = "TEST-1",
+            Title = "Test",
+            State = "Backlog"
+        };
+
+        Assert.IsFalse(orchestrator.ShouldDispatch(issue, config));
+    }
+
+    [TestMethod]
+    public void ShouldDispatch_PerStateConcurrencyLimitReached_ReturnsFalse()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        var config = new ServiceConfig
+        {
+            ActiveStates = ["In Progress"],
+            TerminalStates = ["Done"],
+            MaxConcurrentAgents = 10,
+            MaxConcurrentAgentsByState = new() { ["in progress"] = 1 }
+        };
+
+        // One already running in "In Progress"
+        orchestrator.State.Running["existing"] = new RunningEntry
+        {
+            Identifier = "EXIST-1",
+            Issue = new Issue { Id = "existing", Identifier = "EXIST-1", Title = "Running", State = "In Progress" },
+            StartedAt = DateTime.UtcNow
+        };
+
+        var issue = new Issue
+        {
+            Id = "2",
+            Identifier = "TEST-2",
+            Title = "New",
+            State = "In Progress"
+        };
+
+        Assert.IsFalse(orchestrator.ShouldDispatch(issue, config));
+    }
+
+    [TestMethod]
+    public void ShouldDispatch_GlobalSlotExhausted_ReturnsFalse()
+    {
+        var config = new ServiceConfig { MaxConcurrentAgents = 1 };
+        var orchestrator = new Orchestrator(
+            () => config,
+            new NullTrackerClient(),
+            new xLNX.Core.Workspaces.WorkspaceManager(() => config, new Microsoft.Extensions.Logging.Abstractions.NullLogger<xLNX.Core.Workspaces.WorkspaceManager>()),
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<Orchestrator>()
+        );
+
+        // Fill the single slot
+        orchestrator.State.Running["existing"] = new RunningEntry
+        {
+            Identifier = "EXIST-1",
+            Issue = new Issue { Id = "existing", Identifier = "EXIST-1", Title = "Running", State = "Todo" },
+            StartedAt = DateTime.UtcNow
+        };
+
+        var issue = new Issue
+        {
+            Id = "2",
+            Identifier = "TEST-2",
+            Title = "Blocked by slots",
+            State = "Todo"
+        };
+
+        Assert.IsFalse(orchestrator.ShouldDispatch(issue, config));
+    }
+
+    [TestMethod]
+    public void AvailableSlots_CorrectlyComputed()
+    {
+        var orchestrator = CreateTestOrchestrator();
+        Assert.AreEqual(10, orchestrator.AvailableSlots());
+
+        orchestrator.State.Running["1"] = new RunningEntry
+        {
+            Identifier = "TEST-1",
+            Issue = new Issue { Id = "1", Identifier = "TEST-1", Title = "Test", State = "Todo" },
+            StartedAt = DateTime.UtcNow
+        };
+
+        Assert.AreEqual(9, orchestrator.AvailableSlots());
+    }
 }
 
 /// <summary>

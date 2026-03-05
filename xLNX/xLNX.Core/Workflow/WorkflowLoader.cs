@@ -76,15 +76,26 @@ public static class WorkflowLoader
                         .WithNamingConvention(UnderscoredNamingConvention.Instance)
                         .Build();
 
-                    var parsed = deserializer.Deserialize<Dictionary<string, object?>>(yamlContent);
-                    if (parsed != null)
-                    {
-                        config = parsed;
-                    }
-                    else
+                    var rawParsed = deserializer.Deserialize<object?>(yamlContent);
+                    if (rawParsed == null)
                     {
                         // Empty YAML is valid, treat as empty config
                     }
+                    else if (rawParsed is Dictionary<object, object?> dictObj)
+                    {
+                        config = dictObj.ToDictionary(
+                            kv => kv.Key.ToString()!,
+                            kv => kv.Value);
+                    }
+                    else
+                    {
+                        throw new WorkflowException("workflow_front_matter_not_a_map",
+                            "YAML front matter must decode to a map/object");
+                    }
+                }
+                catch (WorkflowException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {

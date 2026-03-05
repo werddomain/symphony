@@ -121,7 +121,7 @@ public class AgentRunner
                     config.CodexApprovalPolicy, config.CodexTurnSandboxPolicy,
                     config.CodexReadTimeoutMs, ct);
 
-                onCodexUpdate?.Invoke("session_started", new { sessionId = $"{threadId}-{turnId}" });
+                onCodexUpdate?.Invoke("session_started", new { sessionId = $"{threadId}-{turnId}", turnCount = turnNumber });
 
                 var result = await appServer.StreamTurnAsync(config.CodexTurnTimeoutMs, msg =>
                 {

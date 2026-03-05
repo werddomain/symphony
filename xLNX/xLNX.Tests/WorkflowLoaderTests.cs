@@ -62,4 +62,50 @@ public class WorkflowLoaderTests
             WorkflowLoader.Load("/nonexistent/WORKFLOW.md"));
         Assert.AreEqual("missing_workflow_file", ex.ErrorCode);
     }
+
+    [TestMethod]
+    public void Parse_NonMapFrontMatter_ThrowsWorkflowException()
+    {
+        var content = """
+            ---
+            - item1
+            - item2
+            ---
+            Prompt here.
+            """;
+
+        var ex = Assert.ThrowsExactly<WorkflowException>(() =>
+            WorkflowLoader.Parse(content));
+        Assert.AreEqual("workflow_front_matter_not_a_map", ex.ErrorCode);
+    }
+
+    [TestMethod]
+    public void Parse_ScalarFrontMatter_ThrowsWorkflowException()
+    {
+        var content = """
+            ---
+            just a string
+            ---
+            Prompt here.
+            """;
+
+        var ex = Assert.ThrowsExactly<WorkflowException>(() =>
+            WorkflowLoader.Parse(content));
+        Assert.AreEqual("workflow_front_matter_not_a_map", ex.ErrorCode);
+    }
+
+    [TestMethod]
+    public void Parse_InvalidYamlFrontMatter_ThrowsWorkflowException()
+    {
+        var content = """
+            ---
+            invalid: [yaml: broken
+            ---
+            Prompt here.
+            """;
+
+        var ex = Assert.ThrowsExactly<WorkflowException>(() =>
+            WorkflowLoader.Parse(content));
+        Assert.AreEqual("workflow_parse_error", ex.ErrorCode);
+    }
 }
