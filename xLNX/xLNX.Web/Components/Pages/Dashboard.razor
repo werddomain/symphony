@@ -1,0 +1,56 @@
+@page "/"
+
+<h1>Symphony xLNX Dashboard</h1>
+<p id="error"></p>
+<button class="refresh-btn" onclick="refreshData()">Refresh</button>
+<button class="refresh-btn" onclick="triggerPoll()">Trigger Poll</button>
+
+<div class="grid">
+    <div class="card">
+        <h2>Running</h2>
+        <div class="stat" id="running-count">-</div>
+    </div>
+    <div class="card">
+        <h2>Retrying</h2>
+        <div class="stat" id="retry-count">-</div>
+    </div>
+    <div class="card">
+        <h2>Total Tokens</h2>
+        <div class="stat" id="total-tokens">-</div>
+    </div>
+    <div class="card">
+        <h2>Runtime (s)</h2>
+        <div class="stat" id="runtime">-</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Running Sessions</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Identifier</th>
+                <th>State</th>
+                <th>Turns</th>
+                <th>Last Event</th>
+                <th>Tokens</th>
+            </tr>
+        </thead>
+        <tbody id="running-table"></tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Retry Queue</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Identifier</th>
+                <th>Attempt</th>
+                <th>Due At</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody id="retry-table"></tbody>
+    </table>
+</div>

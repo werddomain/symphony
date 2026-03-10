@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="xLNX.Core/xLNX.Core.csproj" />
+  <Project Path="xLNX.Data/xLNX.Data.csproj" />
+  <Project Path="xLNX.Runner/xLNX.Runner.csproj" />
+  <Project Path="xLNX.Tests/xLNX.Tests.csproj" />
+  <Project Path="xLNX.Web/xLNX.Web.csproj" />
+</Solution>
