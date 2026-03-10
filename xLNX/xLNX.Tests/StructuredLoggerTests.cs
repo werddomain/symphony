@@ -17,12 +17,12 @@ public class StructuredLoggerTests
         using var scope = logger.BeginIssueScope("issue-123", "TEST-456");
 
         Assert.IsNotNull(scope);
-        // Verify the scope dictionary contains expected fields
-        Assert.IsTrue(logger.LastScopeState is Dictionary<string, object> dict
-            && dict.ContainsKey("issue_id")
-            && dict.ContainsKey("issue_identifier")
-            && (string)dict["issue_id"] == "issue-123"
-            && (string)dict["issue_identifier"] == "TEST-456");
+        Assert.IsInstanceOfType<Dictionary<string, object>>(logger.LastScopeState);
+        var dict = (Dictionary<string, object>)logger.LastScopeState!;
+        Assert.IsTrue(dict.ContainsKey("issue_id"));
+        Assert.IsTrue(dict.ContainsKey("issue_identifier"));
+        Assert.AreEqual("issue-123", dict["issue_id"]);
+        Assert.AreEqual("TEST-456", dict["issue_identifier"]);
     }
 
     [TestMethod]
@@ -33,9 +33,10 @@ public class StructuredLoggerTests
         using var scope = logger.BeginSessionScope("session-789");
 
         Assert.IsNotNull(scope);
-        Assert.IsTrue(logger.LastScopeState is Dictionary<string, object> dict
-            && dict.ContainsKey("session_id")
-            && (string)dict["session_id"] == "session-789");
+        Assert.IsInstanceOfType<Dictionary<string, object>>(logger.LastScopeState);
+        var dict = (Dictionary<string, object>)logger.LastScopeState!;
+        Assert.IsTrue(dict.ContainsKey("session_id"));
+        Assert.AreEqual("session-789", dict["session_id"]);
     }
 
     [TestMethod]

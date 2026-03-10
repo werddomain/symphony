@@ -13,7 +13,7 @@ namespace xLNX.Tests;
 [TestClass]
 public class LinearClientTests
 {
-    private static ServiceConfig TestConfig() => new()
+    private static ServiceConfig CreateTestConfig() => new()
     {
         TrackerKind = "linear",
         TrackerApiKey = "test-key",
@@ -28,7 +28,7 @@ public class LinearClientTests
         var fakeHandler = new FakeHttpMessageHandler(handler);
         var httpClient = new HttpClient(fakeHandler);
         var logger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<LinearClient>();
-        return new LinearClient(httpClient, logger, TestConfig);
+        return new LinearClient(httpClient, logger, CreateTestConfig);
     }
 
     [TestMethod]
@@ -95,7 +95,16 @@ public class LinearClientTests
                         {
                             issues = new
                             {
-                                nodes = new[] { new { id = "id-1", identifier = "TEST-1", title = "First", state = new { name = "Todo" }, labels = new { nodes = Array.Empty<object>() }, inverseRelations = new { nodes = Array.Empty<object>() } } },
+                                nodes = new[]
+                                {
+                                    new
+                                    {
+                                        id = "id-1", identifier = "TEST-1", title = "First",
+                                        state = new { name = "Todo" },
+                                        labels = new { nodes = Array.Empty<object>() },
+                                        inverseRelations = new { nodes = Array.Empty<object>() }
+                                    }
+                                },
                                 pageInfo = new { hasNextPage = true, endCursor = "cursor-1" }
                             }
                         }
@@ -110,7 +119,16 @@ public class LinearClientTests
                     {
                         issues = new
                         {
-                            nodes = new[] { new { id = "id-2", identifier = "TEST-2", title = "Second", state = new { name = "In Progress" }, labels = new { nodes = Array.Empty<object>() }, inverseRelations = new { nodes = Array.Empty<object>() } } },
+                            nodes = new[]
+                            {
+                                new
+                                {
+                                    id = "id-2", identifier = "TEST-2", title = "Second",
+                                    state = new { name = "In Progress" },
+                                    labels = new { nodes = Array.Empty<object>() },
+                                    inverseRelations = new { nodes = Array.Empty<object>() }
+                                }
+                            },
                             pageInfo = new { hasNextPage = false, endCursor = (string?)null }
                         }
                     }
