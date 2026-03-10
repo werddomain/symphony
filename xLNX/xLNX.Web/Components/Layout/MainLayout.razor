@@ -1,3 +1,30 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
-@Body
+<div class="layout">
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            ⚡ <span>Symphony xLNX</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/" class="@NavClass("/")"><span class="nav-icon">📊</span> <span>Dashboard</span></a></li>
+            <li><a href="/sessions" class="@NavClass("/sessions")"><span class="nav-icon">▶️</span> <span>Sessions</span></a></li>
+            <li><a href="/retries" class="@NavClass("/retries")"><span class="nav-icon">🔄</span> <span>Retries</span></a></li>
+            <li><a href="/configuration" class="@NavClass("/configuration")"><span class="nav-icon">⚙️</span> <span>Configuration</span></a></li>
+            <li><a href="/workflow" class="@NavClass("/workflow")"><span class="nav-icon">📝</span> <span>Workflow</span></a></li>
+        </ul>
+    </nav>
+    <main class="main-content">
+        @Body
+    </main>
+</div>
+
+@code {
+    private string NavClass(string href)
+    {
+        var uri = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (string.IsNullOrEmpty(uri) && href == "/") return "active";
+        if (href != "/" && ("/" + uri).StartsWith(href)) return "active";
+        return "";
+    }
+}

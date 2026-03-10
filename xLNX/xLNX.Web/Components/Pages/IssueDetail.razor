@@ -1,0 +1,211 @@
+@page "/issues/{Identifier}"
+
+<PageTitle>@Identifier — Symphony xLNX</PageTitle>
+
+<div class="page-header">
+    <h1>Issue: @Identifier</h1>
+    <div>
+        <button class="btn btn-primary" @onclick="RefreshAsync">Refresh</button>
+        <button class="btn btn-secondary" @onclick="TriggerPollAsync">Trigger Poll</button>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <div class="error-banner">@_error</div>
+}
+
+@if (!_loaded)
+{
+    <div class="loading">Loading issue details…</div>
+}
+else if (_running is null && _retry is null)
+{
+    <div class="card">
+        <div class="empty-state">Issue @Identifier is not currently running or in the retry queue.</div>
+    </div>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Status</div>
+            <div class="stat-value @(_running is not null ? "" : "warning")">
+                @(_running is not null ? "Running" : "Retrying")
+            </div>
+        </div>
+        @if (_running is not null)
+        {
+            <div class="stat-card">
+                <div class="stat-label">Turns</div>
+                <div class="stat-value">@_running.Session.TurnCount</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Tokens</div>
+                <div class="stat-value">@_running.Session.CodexTotalTokens.ToString("N0")</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Elapsed</div>
+                <div class="stat-value">@FormatElapsed(_running.StartedAt)</div>
+            </div>
+        }
+        @if (_retry is not null)
+        {
+            <div class="stat-card">
+                <div class="stat-label">Attempt</div>
+                <div class="stat-value warning">@_retry.Attempt</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Due In</div>
+                <div class="stat-value">@FormatTimeRemaining(_retry.DueAtMs)</div>
+            </div>
+        }
+    </div>
+
+    @if (_running is not null)
+    {
+        <div class="detail-grid">
+            <div class="card">
+                <h2>Issue Details</h2>
+                <table class="config-table">
+                    <tbody>
+                        <tr><th>Identifier</th><td>@_running.Identifier</td></tr>
+                        <tr><th>ID</th><td>@_running.Issue.Id</td></tr>
+                        <tr><th>Title</th><td>@_running.Issue.Title</td></tr>
+                        <tr><th>State</th><td><span class="badge badge-running">@_running.Issue.State</span></td></tr>
+                        <tr><th>Priority</th><td>@(_running.Issue.Priority?.ToString() ?? "—")</td></tr>
+                        <tr>
+                            <th>Labels</th>
+                            <td>
+                                @if (_running.Issue.Labels.Count > 0)
+                                {
+                                    @string.Join(", ", _running.Issue.Labels)
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr><th>Description</th><td>@(_running.Issue.Description ?? "—")</td></tr>
+                        @if (_running.Issue.Url is not null)
+                        {
+                            <tr><th>Tracker URL</th><td><a href="@_running.Issue.Url" target="_blank">@_running.Issue.Url</a></td></tr>
+                        }
+                        @if (_running.Issue.BranchName is not null)
+                        {
+                            <tr><th>Branch</th><td>@_running.Issue.BranchName</td></tr>
+                        }
+                        @if (_running.Issue.CreatedAt is not null)
+                        {
+                            <tr><th>Created</th><td>@_running.Issue.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                        }
+                        @if (_running.Issue.UpdatedAt is not null)
+                        {
+                            <tr><th>Updated</th><td>@_running.Issue.UpdatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Session Details</h2>
+                <table class="config-table">
+                    <tbody>
+                        <tr><th>Session ID</th><td>@_running.Session.SessionId</td></tr>
+                        <tr><th>Thread ID</th><td>@_running.Session.ThreadId</td></tr>
+                        <tr><th>Turn ID</th><td>@_running.Session.TurnId</td></tr>
+                        <tr><th>Turn Count</th><td>@_running.Session.TurnCount</td></tr>
+                        <tr><th>Last Event</th><td>@(_running.Session.LastCodexEvent ?? "—")</td></tr>
+                        <tr><th>Last Message</th><td>@(_running.Session.LastCodexMessage ?? "—")</td></tr>
+                        @if (_running.Session.LastCodexTimestamp is not null)
+                        {
+                            <tr><th>Last Event At</th><td>@_running.Session.LastCodexTimestamp.Value.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                        }
+                        <tr><th>Started At</th><td>@_running.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                        @if (_running.RetryAttempt is not null)
+                        {
+                            <tr><th>Retry Attempt</th><td>@_running.RetryAttempt</td></tr>
+                        }
+                        @if (_running.Session.CodexAppServerPid is not null)
+                        {
+                            <tr><th>Agent PID</th><td>@_running.Session.CodexAppServerPid</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Token Usage</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Current Session</th>
+                        <th>Last Reported</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Input Tokens</td>
+                        <td>@_running.Session.CodexInputTokens.ToString("N0")</td>
+                        <td>@_running.Session.LastReportedInputTokens.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Output Tokens</td>
+                        <td>@_running.Session.CodexOutputTokens.ToString("N0")</td>
+                        <td>@_running.Session.LastReportedOutputTokens.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Total Tokens</td>
+                        <td>@_running.Session.CodexTotalTokens.ToString("N0")</td>
+                        <td>@_running.Session.LastReportedTotalTokens.ToString("N0")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        @if (_running.Issue.BlockedBy.Count > 0)
+        {
+            <div class="card">
+                <h2>Blocked By</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Identifier</th>
+                            <th>ID</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var blocker in _running.Issue.BlockedBy)
+                        {
+                            <tr>
+                                <td>@(blocker.Identifier ?? "—")</td>
+                                <td>@(blocker.Id ?? "—")</td>
+                                <td>@(blocker.State ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    @if (_retry is not null && _running is null)
+    {
+        <div class="card">
+            <h2>Retry Details</h2>
+            <table class="config-table">
+                <tbody>
+                    <tr><th>Issue ID</th><td>@_retry.IssueId</td></tr>
+                    <tr><th>Identifier</th><td>@_retry.Identifier</td></tr>
+                    <tr><th>Attempt</th><td>@_retry.Attempt</td></tr>
+                    <tr><th>Due At</th><td>@DateTimeOffset.FromUnixTimeMilliseconds(_retry.DueAtMs).ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                    <tr><th>Error</th><td>@(_retry.Error ?? "—")</td></tr>
+                </tbody>
+            </table>
+        </div>
+    }
+}

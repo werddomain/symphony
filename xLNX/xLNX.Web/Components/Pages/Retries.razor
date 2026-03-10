@@ -1,0 +1,72 @@
+@page "/retries"
+
+<PageTitle>Retry Queue — Symphony xLNX</PageTitle>
+
+<div class="page-header">
+    <h1>Retry Queue</h1>
+    <div>
+        <button class="btn btn-primary" @onclick="RefreshAsync">Refresh</button>
+        <button class="btn btn-secondary" @onclick="TriggerPollAsync">Force Poll</button>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <div class="error-banner">@_error</div>
+}
+
+@if (_state is null)
+{
+    <div class="loading">Loading retry queue…</div>
+}
+else if (_state.RetryAttempts.Count == 0)
+{
+    <div class="card">
+        <div class="empty-state">No pending retries. All dispatched issues are either running or completed.</div>
+    </div>
+}
+else
+{
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Queued Retries</div>
+            <div class="stat-value warning">@_state.RetryAttempts.Count</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Max Attempt</div>
+            <div class="stat-value">@_state.RetryAttempts.Values.Max(r => r.Attempt)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Next Due</div>
+            <div class="stat-value">@FormatNextDue()</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Identifier</th>
+                    <th>Issue ID</th>
+                    <th>Attempt</th>
+                    <th>Due At</th>
+                    <th>Time Remaining</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _state.RetryAttempts.Values.OrderBy(r => r.DueAtMs))
+                {
+                    <tr>
+                        <td><a href="/issues/@entry.Identifier">@entry.Identifier</a></td>
+                        <td title="@entry.IssueId">@Truncate(entry.IssueId, 12)</td>
+                        <td><span class="badge badge-retrying">Attempt @entry.Attempt</span></td>
+                        <td>@FormatDueAtTimestamp(entry.DueAtMs)</td>
+                        <td>@FormatTimeRemaining(entry.DueAtMs)</td>
+                        <td>@(entry.Error ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
