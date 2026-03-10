@@ -49,10 +49,7 @@ public partial class Workflow : ComponentBase
 
     private string GetWorkflowPath()
     {
-        // Access the workflow path from the watcher using reflection
-        var field = typeof(WorkflowWatcher).GetField("_workflowPath",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field?.GetValue(WorkflowWatcher) as string ?? "(unknown)";
+        return WorkflowWatcher.WorkflowPath;
     }
 
     private string FormatYamlConfig()

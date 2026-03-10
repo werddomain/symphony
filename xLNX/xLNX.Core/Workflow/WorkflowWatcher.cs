@@ -28,6 +28,9 @@ public sealed class WorkflowWatcher : IDisposable
         _currentConfig = ConfigLayer.Build(_currentWorkflow.Config);
     }
 
+    /// <summary>Gets the absolute path to the watched workflow file.</summary>
+    public string WorkflowPath => _workflowPath;
+
     /// <summary>Gets the current effective workflow definition.</summary>
     public WorkflowDefinition CurrentWorkflow
     {

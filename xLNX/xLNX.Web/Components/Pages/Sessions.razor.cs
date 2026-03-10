@@ -5,6 +5,8 @@ namespace xLNX.Web.Components.Pages;
 
 public partial class Sessions : ComponentBase, IDisposable
 {
+    private const int RefreshIntervalMs = 5000;
+
     [Inject] private Func<OrchestratorState> StateProvider { get; set; } = default!;
 
     private OrchestratorState? _state;
@@ -14,7 +16,7 @@ public partial class Sessions : ComponentBase, IDisposable
     protected override void OnInitialized()
     {
         RefreshState();
-        _timer = new Timer(_ => InvokeAsync(() => { RefreshState(); StateHasChanged(); }), null, 5000, 5000);
+        _timer = new Timer(_ => InvokeAsync(() => { RefreshState(); StateHasChanged(); }), null, RefreshIntervalMs, RefreshIntervalMs);
     }
 
     private Task RefreshAsync()

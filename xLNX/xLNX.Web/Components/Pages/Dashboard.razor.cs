@@ -7,6 +7,8 @@ namespace xLNX.Web.Components.Pages;
 
 public partial class Dashboard : ComponentBase, IDisposable
 {
+    private const int RefreshIntervalMs = 5000;
+
     [Inject] private Func<OrchestratorState> StateProvider { get; set; } = default!;
     [Inject] private Orchestrator Orchestrator { get; set; } = default!;
 
@@ -19,7 +21,7 @@ public partial class Dashboard : ComponentBase, IDisposable
     protected override void OnInitialized()
     {
         RefreshState();
-        _timer = new Timer(_ => InvokeAsync(() => { RefreshState(); StateHasChanged(); }), null, 5000, 5000);
+        _timer = new Timer(_ => InvokeAsync(() => { RefreshState(); StateHasChanged(); }), null, RefreshIntervalMs, RefreshIntervalMs);
     }
 
     private Task RefreshDataAsync()
@@ -28,7 +30,7 @@ public partial class Dashboard : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private Task TriggerPollAsync()
+    private async Task TriggerPollAsync()
     {
         try
         {
@@ -40,8 +42,8 @@ public partial class Dashboard : ComponentBase, IDisposable
             _error = $"Failed to trigger poll: {ex.Message}";
         }
         // Refresh after short delay to show updated data
-        Task.Delay(1000).ContinueWith(_ => InvokeAsync(() => { RefreshState(); StateHasChanged(); }));
-        return Task.CompletedTask;
+        await Task.Delay(1000);
+        RefreshState();
     }
 
     private void RefreshState()
