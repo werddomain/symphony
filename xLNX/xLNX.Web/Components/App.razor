@@ -4,11 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Symphony xLNX Dashboard</title>
-    <link rel="stylesheet" href="css/dashboard.css" />
-    <HeadOutlet />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="xLNX.Web.styles.css" />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
-    <Routes />
-    <script src="js/dashboard.js"></script>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
 </body>
 </html>

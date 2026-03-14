@@ -11,7 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
-builder.Services.AddRazorComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 // Determine workflow path: CLI arg or default WORKFLOW.md
 var workflowPath = args.Length > 0 && !args[0].StartsWith('-')
@@ -53,6 +54,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAntiforgery();
 app.MapControllers();
-app.MapRazorComponents<App>();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -1,0 +1,65 @@
+@page "/workflow"
+
+<PageTitle>Workflow — Symphony xLNX</PageTitle>
+
+<div class="page-header">
+    <h1>Workflow Definition</h1>
+    <button class="btn btn-primary" @onclick="RefreshAsync">Reload</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="error-banner">@_error</div>
+}
+
+@if (_workflow is null)
+{
+    <div class="loading">Loading workflow…</div>
+}
+else
+{
+    <div class="card">
+        <h2>Workflow File</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>Path</th><td>@_workflowPath</td></tr>
+                <tr><th>Config Keys</th><td>@_workflow.Config.Count</td></tr>
+                <tr><th>Prompt Length</th><td>@_workflow.PromptTemplate.Length characters</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>YAML Front-Matter Configuration</h2>
+        @if (_workflow.Config.Count == 0)
+        {
+            <div class="empty-state">No YAML front-matter configuration defined.</div>
+        }
+        else
+        {
+            <div class="code-block">@FormatYamlConfig()</div>
+        }
+    </div>
+
+    <div class="card">
+        <h2>Prompt Template</h2>
+        @if (string.IsNullOrWhiteSpace(_workflow.PromptTemplate))
+        {
+            <div class="empty-state">No prompt template defined (default will be used).</div>
+        }
+        else
+        {
+            <div class="code-block">@_workflow.PromptTemplate</div>
+        }
+    </div>
+
+    <div class="card">
+        <h2>Template Variables</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>issue</th><td>Full normalized issue object (id, identifier, title, description, priority, state, labels, blocked_by, etc.)</td></tr>
+                <tr><th>attempt</th><td>Null on first run, integer on retry/continuation</td></tr>
+            </tbody>
+        </table>
+    </div>
+}

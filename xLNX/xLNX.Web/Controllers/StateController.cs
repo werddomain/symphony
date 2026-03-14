@@ -83,9 +83,9 @@ public class StateController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/{identifier} - Returns issue-specific runtime details.
+    /// GET /api/v1/issues/{identifier} - Returns issue-specific runtime details.
     /// </summary>
-    [HttpGet("{identifier}")]
+    [HttpGet("issues/{identifier}")]
     public IActionResult GetIssue(string identifier)
     {
         var state = _stateProvider();

@@ -1,0 +1,121 @@
+@page "/configuration"
+
+<PageTitle>Configuration — Symphony xLNX</PageTitle>
+
+<div class="page-header">
+    <h1>Configuration</h1>
+    <button class="btn btn-primary" @onclick="RefreshAsync">Refresh</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="error-banner">@_error</div>
+}
+
+@if (_config is null)
+{
+    <div class="loading">Loading configuration…</div>
+}
+else
+{
+    <div class="card">
+        <h2>Tracker</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>Kind</th><td>@_config.TrackerKind</td></tr>
+                <tr><th>Endpoint</th><td>@_config.TrackerEndpoint</td></tr>
+                <tr><th>API Key</th><td>@MaskSecret(_config.TrackerApiKey)</td></tr>
+                <tr><th>Project Slug</th><td>@_config.TrackerProjectSlug</td></tr>
+                <tr><th>Active States</th><td>@string.Join(", ", _config.ActiveStates)</td></tr>
+                <tr><th>Terminal States</th><td>@string.Join(", ", _config.TerminalStates)</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="detail-grid">
+        <div class="card">
+            <h2>Polling</h2>
+            <table class="config-table">
+                <tbody>
+                    <tr><th>Interval</th><td>@_config.PollIntervalMs ms (@(_config.PollIntervalMs / 1000.0)s)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Workspace</h2>
+            <table class="config-table">
+                <tbody>
+                    <tr><th>Root</th><td>@_config.WorkspaceRoot</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Hooks</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>after_create</th><td>@(_config.HookAfterCreate ?? "—")</td></tr>
+                <tr><th>before_run</th><td>@(_config.HookBeforeRun ?? "—")</td></tr>
+                <tr><th>after_run</th><td>@(_config.HookAfterRun ?? "—")</td></tr>
+                <tr><th>before_remove</th><td>@(_config.HookBeforeRemove ?? "—")</td></tr>
+                <tr><th>Timeout</th><td>@_config.HookTimeoutMs ms (@(_config.HookTimeoutMs / 1000.0)s)</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Agent</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>Max Concurrent Agents</th><td>@_config.MaxConcurrentAgents</td></tr>
+                <tr><th>Max Turns</th><td>@_config.MaxTurns</td></tr>
+                <tr><th>Max Retry Backoff</th><td>@_config.MaxRetryBackoffMs ms (@(_config.MaxRetryBackoffMs / 1000.0)s)</td></tr>
+                @if (_config.MaxConcurrentAgentsByState.Count > 0)
+                {
+                    <tr>
+                        <th>Per-State Limits</th>
+                        <td>
+                            @foreach (var kv in _config.MaxConcurrentAgentsByState)
+                            {
+                                <div>@kv.Key: @kv.Value</div>
+                            }
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr><th>Per-State Limits</th><td>None (global limit applies)</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Codex</h2>
+        <table class="config-table">
+            <tbody>
+                <tr><th>Command</th><td>@_config.CodexCommand</td></tr>
+                <tr><th>Approval Policy</th><td>@(_config.CodexApprovalPolicy ?? "—")</td></tr>
+                <tr><th>Thread Sandbox</th><td>@(_config.CodexThreadSandbox ?? "—")</td></tr>
+                <tr><th>Turn Sandbox Policy</th><td>@(_config.CodexTurnSandboxPolicy ?? "—")</td></tr>
+                <tr><th>Turn Timeout</th><td>@_config.CodexTurnTimeoutMs ms (@(_config.CodexTurnTimeoutMs / 1000.0)s)</td></tr>
+                <tr><th>Read Timeout</th><td>@_config.CodexReadTimeoutMs ms (@(_config.CodexReadTimeoutMs / 1000.0)s)</td></tr>
+                <tr><th>Stall Timeout</th><td>@FormatStallTimeout()</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    @if (_config.ServerPort is not null)
+    {
+        <div class="card">
+            <h2>Server</h2>
+            <table class="config-table">
+                <tbody>
+                    <tr><th>Port</th><td>@_config.ServerPort</td></tr>
+                </tbody>
+            </table>
+        </div>
+    }
+}

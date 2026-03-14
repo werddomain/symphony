@@ -1,0 +1,87 @@
+@page "/sessions"
+
+<PageTitle>Sessions — Symphony xLNX</PageTitle>
+
+<div class="page-header">
+    <h1>Active Sessions</h1>
+    <button class="btn btn-primary" @onclick="RefreshAsync">Refresh</button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="error-banner">@_error</div>
+}
+
+@if (_state is null)
+{
+    <div class="loading">Loading sessions…</div>
+}
+else if (_state.Running.Count == 0)
+{
+    <div class="card">
+        <div class="empty-state">No active sessions. The orchestrator will dispatch work when eligible issues are found.</div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Identifier</th>
+                    <th>Title</th>
+                    <th>State</th>
+                    <th>Priority</th>
+                    <th>Session ID</th>
+                    <th>Turns</th>
+                    <th>Last Event</th>
+                    <th>Last Message</th>
+                    <th>Input Tokens</th>
+                    <th>Output Tokens</th>
+                    <th>Total Tokens</th>
+                    <th>Started</th>
+                    <th>Elapsed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _state.Running.Values.OrderBy(r => r.Issue.Priority ?? int.MaxValue).ThenBy(r => r.StartedAt))
+                {
+                    <tr>
+                        <td><a href="/issues/@entry.Identifier">@entry.Identifier</a></td>
+                        <td>@Truncate(entry.Issue.Title, 40)</td>
+                        <td><span class="badge badge-running">@entry.Issue.State</span></td>
+                        <td>@(entry.Issue.Priority?.ToString() ?? "—")</td>
+                        <td title="@entry.Session.SessionId">@TruncateSessionId(entry.Session.SessionId)</td>
+                        <td>@entry.Session.TurnCount</td>
+                        <td>@(entry.Session.LastCodexEvent ?? "—")</td>
+                        <td title="@entry.Session.LastCodexMessage">@Truncate(entry.Session.LastCodexMessage, 30)</td>
+                        <td>@entry.Session.CodexInputTokens.ToString("N0")</td>
+                        <td>@entry.Session.CodexOutputTokens.ToString("N0")</td>
+                        <td>@entry.Session.CodexTotalTokens.ToString("N0")</td>
+                        <td>@entry.StartedAt.ToString("HH:mm:ss")</td>
+                        <td>@FormatElapsed(entry.StartedAt)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Active</div>
+            <div class="stat-value">@_state.Running.Count</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Aggregate Input Tokens</div>
+            <div class="stat-value">@_state.Running.Values.Sum(r => r.Session.CodexInputTokens).ToString("N0")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Aggregate Output Tokens</div>
+            <div class="stat-value">@_state.Running.Values.Sum(r => r.Session.CodexOutputTokens).ToString("N0")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Aggregate Total Tokens</div>
+            <div class="stat-value">@_state.Running.Values.Sum(r => r.Session.CodexTotalTokens).ToString("N0")</div>
+        </div>
+    </div>
+}
