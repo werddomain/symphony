@@ -9,6 +9,18 @@ using xLNX.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Bridge appsettings.json keys into environment variables as fallback for WORKFLOW.md $VAR references.
+// This lets dev machines store secrets in appsettings.Development.json without committing them.
+foreach (var key in new[] { "LINEAR_API_KEY" })
+{
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+    {
+        var value = builder.Configuration[key];
+        if (!string.IsNullOrEmpty(value))
+            Environment.SetEnvironmentVariable(key, value);
+    }
+}
+
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddRazorComponents()

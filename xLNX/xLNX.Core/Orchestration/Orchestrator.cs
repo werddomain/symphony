@@ -72,7 +72,7 @@ public class Orchestrator
             {
                 _logger.LogError("Config validation failed: {Error}", error);
             }
-            throw new InvalidOperationException("Configuration validation failed at startup");
+            _logger.LogWarning("Starting orchestrator loop with invalid config — dispatch will be skipped until WORKFLOW.md is corrected");
         }
 
         // Startup terminal workspace cleanup (SPEC 8.6)

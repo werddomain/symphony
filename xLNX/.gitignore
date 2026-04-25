@@ -36,3 +36,6 @@ bld/
 
 # VS Code
 .vscode/
+
+# Local dev secrets
+**/appsettings.Development.json
